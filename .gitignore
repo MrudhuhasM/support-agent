@@ -10,6 +10,10 @@ wheels/
 /data/raw/*.csv
 /data/raw/*.zip
 /data/olist.sqlite
+/data/store.sqlite
 
+
+# docs
+/docs/spine.md
 # Virtual environments
 .venv

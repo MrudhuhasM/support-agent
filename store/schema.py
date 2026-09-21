@@ -13,10 +13,21 @@ def initialize_schema(connection: sqlite3.Connection) -> None:
         """
         CREATE TABLE IF NOT EXISTS orders (
             order_id TEXT PRIMARY KEY,
-            order_status TEXT
+            order_status TEXT,
+            order_estimated_delivery_date TEXT,
+            order_delivered_customer_date TEXT
         )
         """
     )
+    order_columns = {
+        row[1] for row in connection.execute("PRAGMA table_info(orders)")
+    }
+    for column in (
+        "order_estimated_delivery_date",
+        "order_delivered_customer_date",
+    ):
+        if column not in order_columns:
+            connection.execute(f"ALTER TABLE orders ADD COLUMN {column} TEXT")
     connection.execute(
         """
         CREATE TABLE IF NOT EXISTS action_events (
