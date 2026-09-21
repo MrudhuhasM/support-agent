@@ -1,3 +1,4 @@
+from contextlib import closing
 import sqlite3
 import tempfile
 import unittest
@@ -11,12 +12,22 @@ class VerifyCancellationTests(unittest.TestCase):
     def test_cancellation_is_verified_from_database_state(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             database_path = Path(temporary_directory) / "store.sqlite"
-            with sqlite3.connect(database_path) as connection:
+            with closing(sqlite3.connect(database_path)) as connection:
                 connection.execute(
                     """
                     CREATE TABLE orders (
                         order_id TEXT PRIMARY KEY,
                         order_status TEXT
+                    )
+                    """
+                )
+                connection.execute(
+                    """
+                    CREATE TABLE action_events (
+                        event_id INTEGER PRIMARY KEY,
+                        tool_name TEXT NOT NULL,
+                        order_id TEXT NOT NULL,
+                        result TEXT NOT NULL
                     )
                     """
                 )
@@ -37,7 +48,8 @@ class VerifyCancellationTests(unittest.TestCase):
                 cancel_order(connection, order_id)
                 connection.commit()
 
-                after_row = connection.execute(
+            with closing(sqlite3.connect(database_path)) as verification_connection:
+                after_row = verification_connection.execute(
                     "SELECT order_status FROM orders WHERE order_id = ?",
                     (order_id,),
                 ).fetchone()

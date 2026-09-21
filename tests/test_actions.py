@@ -21,6 +21,16 @@ class CancelOrderTests(unittest.TestCase):
             )
             """
         )
+        self.connection.execute(
+            """
+            CREATE TABLE action_events (
+                event_id INTEGER PRIMARY KEY,
+                tool_name TEXT NOT NULL,
+                order_id TEXT NOT NULL,
+                result TEXT NOT NULL
+            )
+            """
+        )
         self.connection.executemany(
             "INSERT INTO orders (order_id, order_status) VALUES (?, ?)",
             [
@@ -63,6 +73,34 @@ class CancelOrderTests(unittest.TestCase):
 
         self.assertEqual(result, "DENIED")
         self.assertEqual(self.order_status("shipped-order"), "shipped")
+        event = self.connection.execute(
+            "SELECT tool_name, order_id, result FROM action_events"
+        ).fetchone()
+        self.assertEqual(event, ("cancel_order", "shipped-order", "DENIED"))
+
+    def test_no_cancellation_tool_call_creates_no_action_record(self) -> None:
+        self.assertEqual(self.order_status("shipped-order"), "shipped")
+        events = self.connection.execute("SELECT * FROM action_events").fetchall()
+
+        self.assertEqual(events, [])
+
+    def test_rollback_reverts_status_change_and_action_record(self) -> None:
+        result = cancel_order(self.connection, "processing-order")
+
+        self.assertEqual(result, "CANCELED")
+        self.assertEqual(self.order_status("processing-order"), "canceled")
+        self.assertEqual(
+            self.connection.execute("SELECT COUNT(*) FROM action_events").fetchone()[0],
+            1,
+        )
+
+        self.connection.rollback()
+
+        self.assertEqual(self.order_status("processing-order"), "processing")
+        self.assertEqual(
+            self.connection.execute("SELECT COUNT(*) FROM action_events").fetchone()[0],
+            0,
+        )
 
     def test_nonexistent_order_is_reported(self) -> None:
         result = cancel_order(self.connection, "missing-order")
