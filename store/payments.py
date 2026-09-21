@@ -1,6 +1,7 @@
 """Read-only payment calculations for store tools."""
 
 import sqlite3
+from contextlib import closing
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
@@ -22,7 +23,14 @@ def _payment_value_to_cents(value: str | None, order_id: str) -> int:
             f"Order {order_id} has an invalid payment_value: {value!r}"
         ) from error
 
-    if not cents.is_finite() or cents != cents.to_integral_value():
+    if not cents.is_finite():
+        raise ValueError(f"Order {order_id} has an invalid payment_value: {value!r}")
+    if cents < 0:
+        raise ValueError(
+            f"Order {order_id} has a negative payment_value: {value!r}; "
+            "refund amounts cannot be negative"
+        )
+    if cents != cents.to_integral_value():
         raise ValueError(
             f"Order {order_id} has a payment_value that is not an exact cent amount: {value!r}"
         )
@@ -40,7 +48,7 @@ def calculate_refund_breakdown(order_id: str) -> dict[str, int]:
         raise ValueError("order_id must be a non-empty string")
 
     database_uri = f"{DATABASE.as_uri()}?mode=ro"
-    with sqlite3.connect(database_uri, uri=True) as connection:
+    with closing(sqlite3.connect(database_uri, uri=True)) as connection:
         rows = connection.execute(
             """
             SELECT payment_type, payment_value

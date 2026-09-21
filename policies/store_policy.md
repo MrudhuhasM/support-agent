@@ -177,43 +177,32 @@ If any eligibility condition is not met, no refund authorization is created.
 
 ## Refund payment treatment
 
-Refund treatment is determined by the order’s payment type.
+Refund treatment is determined by aggregating the order’s payment records.
 
-| Payment type | Refund treatment |
+Instead of a single refund-treatment label, a refund authorization stores the calculated breakdown:
+- `cash_cents`: The total monetary refund amount.
+- `voucher_cents`: The total store credit amount.
+
+| Payment type | Contribution to refund authorization |
 |---|---|
-| `credit_card` | Monetary refund |
-| `debit_card` | Monetary refund |
-| `boleto` | Monetary refund authorization; payout handled separately |
-| `voucher` | Restore as store credit |
-| `not_defined` | Require manual review |
-| No payment records | Require manual review |
+| `credit_card` | Added to `cash_cents` |
+| `debit_card` | Added to `cash_cents` |
+| `boleto` | Added to `cash_cents` |
+| `voucher` | Added to `voucher_cents` |
 
 ### Payment determination rules
 
 For refund treatment:
 
-- If the order has no payment record, require manual review.
-- If the order has exactly one payment record, use that payment record’s payment type.
-- If the order has multiple payment records, require manual review.
-- If a payment type is missing, empty, unrecognized, or `not_defined`, require manual review.
+- If the order has no payment records, require manual review.
+- If ANY payment record has a missing, empty, unrecognized, or `not_defined` payment type, require manual review.
+- If ANY payment record has a missing, invalid, or negative amount, require manual review.
 - Recognized payment types are exactly:
   - `credit_card`
   - `debit_card`
   - `boleto`
   - `voucher`
-
-### Refund treatment state values
-
-When a refund is automatically authorized, the refund authorization must include a treatment value:
-
-| Payment type | Refund treatment state |
-|---|---|
-| `credit_card` | `monetary_refund` |
-| `debit_card` | `monetary_refund` |
-| `boleto` | `monetary_refund_authorization` |
-| `voucher` | `store_credit` |
-
-Manual review does not create a refund authorization.
+- If all payment records have recognized types and valid amounts, the refund can be automatically authorized. The authorization will include the calculated `cash_cents` and `voucher_cents`.
 
 ## Refund decision table
 
@@ -227,18 +216,16 @@ Evaluate refund requests in the following order.
 | No return request exists for the order | No | Deny the refund request. | No refund authorization is created. Return state remains unchanged. Order state remains unchanged. | `REFUND_DENIED_NO_RETURN` |
 | Return status is `created` | No | Deny the refund request. | No refund authorization is created. Return status remains `created`. Order state remains unchanged. | `REFUND_DENIED_RETURN_NOT_APPROVED` |
 | Return status is not `approved` | No | Deny the refund request. | No refund authorization is created. Return status remains unchanged. Order state remains unchanged. | `REFUND_DENIED_RETURN_NOT_APPROVED` |
-| Refund treatment requires manual review | No automatic refund | Route the refund request to manual review. | No refund authorization is created. Return state remains unchanged. Order state remains unchanged. | `REFUND_MANUAL_REVIEW_REQUIRED` |
-| Return status is `approved`, no refund authorization exists, and refund treatment is determined automatically | Yes | Authorize the refund with the determined treatment. | A refund authorization exists with status `authorized` and the assigned refund treatment. Return status remains unchanged. Order state remains unchanged. | `REFUND_AUTHORIZED` |
+| Order has no payment records | No automatic refund | Route the refund request to manual review. | No refund authorization is created. Return state remains unchanged. Order state remains unchanged. | `REFUND_MANUAL_REVIEW_REQUIRED` |
+| Any payment record has unrecognized, `not_defined`, or missing type, or invalid/missing amount | No automatic refund | Route the refund request to manual review. | No refund authorization is created. Return state remains unchanged. Order state remains unchanged. | `REFUND_MANUAL_REVIEW_REQUIRED` |
+| Return status is `approved`, no refund authorization exists, and all payment records have recognized types and valid amounts | Yes | Authorize the refund with calculated `cash_cents` and `voucher_cents`. | A refund authorization exists with status `authorized` and the calculated amounts. Return status remains unchanged. Order state remains unchanged. | `REFUND_AUTHORIZED` |
 
 ## Refund state effects
 
 When a refund is automatically authorized:
 
 - A refund authorization exists with status `authorized`.
-- The refund authorization includes the appropriate refund treatment:
-  - `monetary_refund`
-  - `monetary_refund_authorization`
-  - `store_credit`
+- The refund authorization includes the calculated `cash_cents` and `voucher_cents`.
 - The return request status remains unchanged.
 - The order status remains unchanged.
 - Payment records are not modified.
@@ -342,7 +329,7 @@ Repeated requests must produce consistent results while the underlying state is 
 | `RETURN_ALREADY_APPROVED` | No change | `approved` | No refund |
 | `RETURN_NOT_FOUND` | No change | No change | No refund |
 | `RETURN_APPROVAL_DENIED` | No change | Unchanged | No refund |
-| `REFUND_AUTHORIZED` | No change | No change | Refund authorization status `authorized`, with treatment `monetary_refund`, `monetary_refund_authorization`, or `store_credit` |
+| `REFUND_AUTHORIZED` | No change | No change | Refund authorization status `authorized`, with `cash_cents` and `voucher_cents` |
 | `REFUND_ALREADY_EXISTS` | No change | No change | Existing refund authorization unchanged |
 | `REFUND_DENIED_NO_RETURN` | No change | No change | No refund |
 | `REFUND_DENIED_RETURN_NOT_APPROVED` | No change | Unchanged | No refund |
