@@ -9,6 +9,12 @@ from store import payments
 
 
 EXAMPLE_ORDER_ID = "fa65dad1b0e818e3ccc5cb0e39231352"
+ACTUAL_29_VOUCHER_VALUES = (
+    "66.02", "29.16", "3.71", "1.08", "12.86", "8.51", "3.68", "0.66",
+    "5.02", "4.03", "0.00", "19.26", "29.05", "14.04", "2.95", "26.02",
+    "3.60", "4.11", "5.02", "0.00", "12.86", "28.27", "3.72", "0.73",
+    "0.32", "18.86", "150.00", "0.42", "4.03",
+)
 
 
 class CalculateRefundBreakdownTests(unittest.TestCase):
@@ -46,6 +52,16 @@ class CalculateRefundBreakdownTests(unittest.TestCase):
 
     def test_voucher_order_returns_45799_cents(self) -> None:
         self.add_payment("voucher", "457.99")
+
+        self.assertEqual(
+            payments.calculate_refund_breakdown(EXAMPLE_ORDER_ID),
+            {"cash_cents": 0, "voucher_cents": 45799, "total_cents": 45799},
+        )
+
+    def test_actual_29_voucher_records_aggregate_to_45799_cents(self) -> None:
+        self.assertEqual(len(ACTUAL_29_VOUCHER_VALUES), 29)
+        for value in ACTUAL_29_VOUCHER_VALUES:
+            self.add_payment("voucher", value)
 
         self.assertEqual(
             payments.calculate_refund_breakdown(EXAMPLE_ORDER_ID),
