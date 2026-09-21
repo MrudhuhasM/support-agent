@@ -23,8 +23,9 @@ def cancel_order(connection: sqlite3.Connection, order_id: str) -> str:
     """Cancel an eligible order and return its policy result code.
 
     The caller supplies the connection so it controls the database and
-    transaction. Only ``orders.order_status`` is changed on a successful
-    cancellation.
+    transaction. The working database must be initialized with
+    ``store.schema.initialize_schema``. Each result is recorded in
+    ``action_events`` in the same transaction as any order status change.
     """
     if not isinstance(order_id, str) or not order_id.strip():
         return _record_action(connection, str(order_id), "INVALID_REQUEST")

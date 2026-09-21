@@ -1,11 +1,15 @@
 import csv
 import sqlite3
+from contextlib import closing
 from pathlib import Path
+
+from store.schema import initialize_schema
 
 
 ROOT = Path(__file__).resolve().parent
 RAW_DATA = ROOT / "data" / "raw"
 DATABASE = ROOT / "data" / "olist.sqlite"
+WORKING_DATABASE = ROOT / "data" / "store.sqlite"
 
 TABLE_FILES = {
     "orders": "olist_orders_dataset.csv",
@@ -46,20 +50,31 @@ def main() -> None:
         raise FileNotFoundError(f"Missing CSV files in {RAW_DATA}: {names}")
 
     DATABASE.parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(DATABASE) as connection:
-        for table, filename in TABLE_FILES.items():
-            load_csv(connection, table, RAW_DATA / filename)
+    with closing(sqlite3.connect(DATABASE)) as connection:
+        with connection:
+            for table, filename in TABLE_FILES.items():
+                load_csv(connection, table, RAW_DATA / filename)
 
         order_count = connection.execute("SELECT COUNT(*) FROM orders").fetchone()[0]
         order_statuses = connection.execute(
             "SELECT order_status, COUNT(*) FROM orders GROUP BY order_status"
         ).fetchall()
 
+        # Seed a new working copy; preserve an existing environment and its events.
+        WORKING_DATABASE.parent.mkdir(parents=True, exist_ok=True)
+        new_working_database = not WORKING_DATABASE.exists()
+        with closing(sqlite3.connect(WORKING_DATABASE)) as working_connection:
+            if new_working_database:
+                connection.backup(working_connection)
+            with working_connection:
+                initialize_schema(working_connection)
+
     print(f"Orders: {order_count}")
     print("Orders by status:")
     for status, count in order_statuses:
         print(f"  {status}: {count}")
-    print(f"Database: {DATABASE}")
+    print(f"Source database: {DATABASE}")
+    print(f"Working database: {WORKING_DATABASE}")
 
 
 if __name__ == "__main__":

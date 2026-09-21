@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from store.actions import cancel_order
+from store.schema import initialize_schema
 
 
 class CancelOrderTests(unittest.TestCase):
@@ -13,24 +14,7 @@ class CancelOrderTests(unittest.TestCase):
         database_path = Path(temporary_directory.name) / "store.sqlite"
         self.connection = sqlite3.connect(database_path)
         self.addCleanup(self.connection.close)
-        self.connection.execute(
-            """
-            CREATE TABLE orders (
-                order_id TEXT PRIMARY KEY,
-                order_status TEXT
-            )
-            """
-        )
-        self.connection.execute(
-            """
-            CREATE TABLE action_events (
-                event_id INTEGER PRIMARY KEY,
-                tool_name TEXT NOT NULL,
-                order_id TEXT NOT NULL,
-                result TEXT NOT NULL
-            )
-            """
-        )
+        initialize_schema(self.connection)
         self.connection.executemany(
             "INSERT INTO orders (order_id, order_status) VALUES (?, ?)",
             [

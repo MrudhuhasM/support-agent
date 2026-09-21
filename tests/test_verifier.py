@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 from store.actions import cancel_order
+from store.schema import initialize_schema
 from store.verifier import verify_cancellation
 
 
@@ -13,24 +14,7 @@ class VerifyCancellationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary_directory:
             database_path = Path(temporary_directory) / "store.sqlite"
             with closing(sqlite3.connect(database_path)) as connection:
-                connection.execute(
-                    """
-                    CREATE TABLE orders (
-                        order_id TEXT PRIMARY KEY,
-                        order_status TEXT
-                    )
-                    """
-                )
-                connection.execute(
-                    """
-                    CREATE TABLE action_events (
-                        event_id INTEGER PRIMARY KEY,
-                        tool_name TEXT NOT NULL,
-                        order_id TEXT NOT NULL,
-                        result TEXT NOT NULL
-                    )
-                    """
-                )
+                initialize_schema(connection)
                 order_id = "processing-order"
                 connection.execute(
                     "INSERT INTO orders (order_id, order_status) VALUES (?, ?)",
@@ -55,6 +39,19 @@ class VerifyCancellationTests(unittest.TestCase):
                 ).fetchone()
                 self.assertIsNotNone(after_row)
                 after_status = after_row[0]
+                events = verification_connection.execute(
+                    "SELECT tool_name, order_id, result FROM action_events"
+                ).fetchall()
+                self.assertEqual(events, [("cancel_order", order_id, "CANCELED")])
+
+                initialize_schema(verification_connection)
+                verification_connection.commit()
+                self.assertEqual(
+                    verification_connection.execute(
+                        "SELECT tool_name, order_id, result FROM action_events"
+                    ).fetchall(),
+                    events,
+                )
 
         self.assertEqual(before_status, "processing")
         self.assertEqual(after_status, "canceled")

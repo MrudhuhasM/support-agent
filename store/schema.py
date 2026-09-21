@@ -1,0 +1,29 @@
+"""Tables required by the working store environment."""
+
+import sqlite3
+
+
+def initialize_schema(connection: sqlite3.Connection) -> None:
+    """Create missing tables without changing existing data or committing.
+
+    A loaded Olist database retains its full orders schema. An empty database
+    receives the minimal orders table needed by the cancellation tool.
+    """
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS orders (
+            order_id TEXT PRIMARY KEY,
+            order_status TEXT
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS action_events (
+            event_id INTEGER PRIMARY KEY,
+            tool_name TEXT NOT NULL,
+            order_id TEXT NOT NULL,
+            result TEXT NOT NULL
+        )
+        """
+    )

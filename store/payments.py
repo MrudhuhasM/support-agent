@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DATABASE = ROOT / "data" / "olist.sqlite"
+DATABASE = ROOT / "data" / "store.sqlite"
 
 MONETARY_PAYMENT_TYPES = {"credit_card", "debit_card", "boleto"}
 
