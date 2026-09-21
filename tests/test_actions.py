@@ -24,6 +24,9 @@ class CancelOrderTests(unittest.TestCase):
         self.connection.executemany(
             "INSERT INTO orders (order_id, order_status) VALUES (?, ?)",
             [
+                ("created-order", "created"),
+                ("approved-order", "approved"),
+                ("invoiced-order", "invoiced"),
                 ("processing-order", "processing"),
                 ("shipped-order", "shipped"),
                 ("delivered-order", "delivered"),
@@ -40,11 +43,20 @@ class CancelOrderTests(unittest.TestCase):
         ).fetchone()
         return row[0]
 
-    def test_successful_cancellation_changes_processing_order(self) -> None:
-        result = cancel_order(self.connection, "processing-order")
+    def test_cancellation_succeeds_for_all_cancellable_statuses(self) -> None:
+        for order_id in (
+            "created-order",
+            "approved-order",
+            "invoiced-order",
+            "processing-order",
+        ):
+            with self.subTest(order_id=order_id):
+                result = cancel_order(self.connection, order_id)
 
-        self.assertEqual(result, "CANCELED")
-        self.assertEqual(self.order_status("processing-order"), "canceled")
+                self.assertEqual(result, "CANCELED")
+                self.assertTrue(self.connection.in_transaction)
+                self.connection.commit()
+                self.assertEqual(self.order_status(order_id), "canceled")
 
     def test_denied_cancellation_leaves_shipped_order_unchanged(self) -> None:
         result = cancel_order(self.connection, "shipped-order")
@@ -59,7 +71,9 @@ class CancelOrderTests(unittest.TestCase):
 
     def test_repeated_cancellation_returns_already_canceled(self) -> None:
         first_result = cancel_order(self.connection, "processing-order")
+        self.connection.commit()
         second_result = cancel_order(self.connection, "processing-order")
+        self.connection.commit()
 
         self.assertEqual(first_result, "CANCELED")
         self.assertEqual(second_result, "ALREADY_CANCELED")
