@@ -38,3 +38,12 @@ def initialize_schema(connection: sqlite3.Connection) -> None:
         )
         """
     )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS order_returns (
+            order_id TEXT PRIMARY KEY,
+            return_status TEXT NOT NULL,
+            return_request_date TEXT NOT NULL
+        )
+        """
+    )
