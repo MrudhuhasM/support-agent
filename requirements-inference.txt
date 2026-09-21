@@ -1,0 +1,3 @@
+# Optional local inference runtime; core tools, preparation, fake runs, and HTTP use stdlib only.
+torch>=2.6
+transformers>=4.51,<6

@@ -1,0 +1,11 @@
+{
+  "status": "Synthetic format demonstrations; proposed taxonomy and action examples need owner review",
+  "examples": [
+    {"job":"triage","source_split":"synthetic","order_id":"demo-a","user":"Please cancel order demo-a.","prediction":{"intent":"cancellation","urgency":"routine","route":"order_support"}},
+    {"job":"triage","source_split":"synthetic","order_id":"demo-b","user":"I would like a refund for order demo-b.","prediction":{"intent":"refund","urgency":"routine","route":"returns_refunds"}},
+    {"job":"reply","source_split":"synthetic","order_id":"demo-c","user":"Customer asks about demo-c. Current facts: shipped. Policy says shipped orders cannot be canceled.","prediction":{"response":"Order demo-c has shipped, so it is no longer eligible for cancellation under the store policy."}},
+    {"job":"reply","source_split":"synthetic","order_id":"demo-d","user":"Customer asks for a refund on demo-d. Current facts: return exists with status created. Policy requires an approved return.","prediction":{"response":"The return for demo-d has been requested but is not yet approved. Refund authorization requires an approved return."}},
+    {"job":"actions","source_split":"synthetic","order_id":"demo-e","user":"Please check order demo-e. Tools permit get_order with an order_id.","prediction":{"type":"tool_call","tool_name":"get_order","arguments":{"order_id":"demo-e"}}},
+    {"job":"actions","source_split":"synthetic","order_id":"demo-f","user":"What is the status of demo-f? Tool observation: get_order returned order_status processing.","prediction":{"type":"final","response":"Order demo-f is currently processing."}}
+  ]
+}

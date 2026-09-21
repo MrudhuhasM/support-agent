@@ -1,0 +1,5 @@
+{
+  "backend": "fake", "model_id": "offline-fake-v1", "revision": "1",
+  "prompt_style": "chat", "seed": 7, "batch_size": 4, "max_examples": null,
+  "max_steps": 6, "max_tool_calls": 4, "parameters": {}
+}

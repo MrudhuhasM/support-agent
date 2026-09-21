@@ -1,0 +1,8 @@
+{
+  "backend": "chat_api", "model_id": null, "revision": null,
+  "endpoint": null, "api_key_env": "SUPPORT_AGENT_API_KEY",
+  "prompt_style": "chat", "seed": 7, "send_seed": false,
+  "batch_size": 1, "max_examples": 1, "timeout_seconds": 120,
+  "max_steps": 6, "max_tool_calls": 4,
+  "parameters": {"max_completion_tokens": 256}
+}

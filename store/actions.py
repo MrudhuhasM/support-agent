@@ -1,7 +1,7 @@
 """State-changing store actions governed by the store policy."""
 
 import sqlite3
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 
 from store.payments import calculate_refund_breakdown
 
@@ -67,9 +67,12 @@ def _parse_utc_date(value: str) -> date | None:
         parsed = datetime.fromisoformat(value.strip())
     except ValueError:
         return None
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(timezone.utc).date()
+    try:
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc).date()
+    except (ValueError, OverflowError):
+        return None
 
 
 def request_return(
@@ -125,7 +128,7 @@ def request_return(
         return _record_action(
             connection, order_id, "RETURN_DENIED_INVALID_DATE", tool_name
         )
-    if normalized_request_date > delivery_date + timedelta(days=30):
+    if (normalized_request_date - delivery_date).days > 30:
         return _record_action(
             connection, order_id, "RETURN_DENIED_WINDOW", tool_name
         )

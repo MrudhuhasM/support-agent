@@ -1,0 +1,8 @@
+{
+  "backend": "huggingface", "model_id": "Qwen/Qwen3-0.6B-Base", "revision": "main",
+  "prompt_style": "base", "few_shot_file": "prompts/few_shot.proposed.json",
+  "seed": 7, "batch_size": 1, "max_examples": null,
+  "device": "auto", "dtype": "auto", "max_input_tokens": 6144,
+  "max_steps": 6, "max_tool_calls": 4,
+  "parameters": {"max_new_tokens": 256, "do_sample": false}
+}

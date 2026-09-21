@@ -1,0 +1,16 @@
+{
+  "seed": 7, "per_intent_limit": null,
+  "triage_taxonomy": {
+    "version": "proposed-v1", "approved": false,
+    "intents": ["cancellation", "delivery_issue", "return", "refund"],
+    "urgencies": ["routine", "time_sensitive"],
+    "routes": ["order_support", "returns_refunds"],
+    "rule": "Delivery issues are time_sensitive; other intents are routine. Cancellation and delivery issues route to order_support; return and refund requests route to returns_refunds.",
+    "labels_by_intent": {
+      "cancellation": {"urgency": "routine", "route": "order_support"},
+      "delivery_issue": {"urgency": "time_sensitive", "route": "order_support"},
+      "return": {"urgency": "routine", "route": "returns_refunds"},
+      "refund": {"urgency": "routine", "route": "returns_refunds"}
+    }
+  }
+}

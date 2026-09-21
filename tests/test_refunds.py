@@ -130,8 +130,8 @@ class AuthorizeRefundTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "not available"):
             call_customer_tool(self.connection, "approve_return", {"order_id": "order-1"})
         self.assertEqual(call_customer_tool(self.connection, "request_return", {
-            "order_id": "order-1", "request_date": "2026-10-16"
-        }), "RETURN_CREATED")
+            "order_id": "order-1"
+        }, request_date="2026-10-16"), "RETURN_CREATED")
         self.add_payment("credit_card", "10.00")
         self.assertEqual(call_customer_tool(self.connection, "authorize_refund", {
             "order_id": "order-1"
