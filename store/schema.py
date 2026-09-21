@@ -7,7 +7,7 @@ def initialize_schema(connection: sqlite3.Connection) -> None:
     """Create missing tables without changing existing data or committing.
 
     A loaded Olist database retains its full orders schema. An empty database
-    receives the minimal orders table needed by the cancellation tool.
+    receives the minimal order and payment tables needed by the store tools.
     """
     connection.execute(
         """
@@ -44,6 +44,25 @@ def initialize_schema(connection: sqlite3.Connection) -> None:
             order_id TEXT PRIMARY KEY,
             return_status TEXT NOT NULL,
             return_request_date TEXT NOT NULL
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS order_payments (
+            order_id TEXT,
+            payment_type TEXT,
+            payment_value TEXT
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS refund_authorizations (
+            order_id TEXT PRIMARY KEY NOT NULL,
+            refund_status TEXT NOT NULL,
+            cash_cents INTEGER NOT NULL CHECK (cash_cents >= 0),
+            voucher_cents INTEGER NOT NULL CHECK (voucher_cents >= 0)
         )
         """
     )

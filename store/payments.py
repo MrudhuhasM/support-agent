@@ -2,7 +2,7 @@
 
 import sqlite3
 from contextlib import closing
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, DecimalException, localcontext
 from pathlib import Path
 
 
@@ -13,12 +13,14 @@ MONETARY_PAYMENT_TYPES = {"credit_card", "debit_card", "boleto"}
 
 
 def _payment_value_to_cents(value: str | None, order_id: str) -> int:
-    if value is None or value.strip() == "":
+    if not isinstance(value, str) or value.strip() == "":
         raise ValueError(f"Order {order_id} has a payment with no payment_value")
 
     try:
-        cents = Decimal(value) * 100
-    except (InvalidOperation, TypeError) as error:
+        with localcontext() as context:
+            context.prec = max(28, len(value) + 2)
+            cents = Decimal(value) * 100
+    except (DecimalException, ValueError) as error:
         raise ValueError(
             f"Order {order_id} has an invalid payment_value: {value!r}"
         ) from error
@@ -37,26 +39,33 @@ def _payment_value_to_cents(value: str | None, order_id: str) -> int:
     return int(cents)
 
 
-def calculate_refund_breakdown(order_id: str) -> dict[str, int]:
+def calculate_refund_breakdown(
+    order_id: str, connection: sqlite3.Connection | None = None
+) -> dict[str, int]:
     """Return the monetary and voucher refund amounts for an order in cents.
 
-    The SQLite connection is opened read-only. Missing payment records, missing
+    Supply the action's connection to read its current transaction. Otherwise a
+    connection to the default working database is opened read-only, preserving
+    the original one-argument interface. Missing payment records, missing
     or unsupported payment types, and invalid amounts raise ``ValueError`` so
     callers can route the request for manual review instead of assuming zero.
     """
     if not isinstance(order_id, str) or not order_id.strip():
         raise ValueError("order_id must be a non-empty string")
 
-    database_uri = f"{DATABASE.as_uri()}?mode=ro"
-    with closing(sqlite3.connect(database_uri, uri=True)) as connection:
-        rows = connection.execute(
-            """
-            SELECT payment_type, payment_value
-            FROM order_payments
-            WHERE order_id = ?
-            """,
-            (order_id,),
-        ).fetchall()
+    if connection is None:
+        database_uri = f"{DATABASE.as_uri()}?mode=ro"
+        with closing(sqlite3.connect(database_uri, uri=True)) as working_connection:
+            return calculate_refund_breakdown(order_id, working_connection)
+
+    rows = connection.execute(
+        """
+        SELECT payment_type, payment_value
+        FROM order_payments
+        WHERE order_id = ?
+        """,
+        (order_id,),
+    ).fetchall()
 
     if not rows:
         raise ValueError(f"Order {order_id} has no payment records")
@@ -64,7 +73,7 @@ def calculate_refund_breakdown(order_id: str) -> dict[str, int]:
     cash_cents = 0
     voucher_cents = 0
     for payment_type, payment_value in rows:
-        if payment_type is None or not payment_type.strip():
+        if not isinstance(payment_type, str) or not payment_type.strip():
             raise ValueError(f"Order {order_id} has a payment with no payment_type")
 
         payment_type = payment_type.strip()

@@ -1,0 +1,10 @@
+Write one short customer support message in English for the supplied request.
+Return only the customer message, with no JSON, labels, or explanation.
+Use only the supplied order facts and simulated environment state. Do not invent
+products, prices, delivery events, return approvals, refunds, or customer history.
+The customer is asking for help; do not claim that a requested action succeeded.
+Include the exact order ID. Dates are UTC calendar dates. The request date is
+simulated; the order facts come from a fixed Olist snapshot.
+
+Request facts:
+{facts}

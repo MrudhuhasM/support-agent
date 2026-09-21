@@ -3,6 +3,8 @@
 import sqlite3
 from datetime import date, datetime, timedelta, timezone
 
+from store.payments import calculate_refund_breakdown
+
 
 CANCELLABLE_STATUSES = {"created", "approved", "invoiced", "processing"}
 
@@ -136,3 +138,53 @@ def request_return(
         (order_id, "created", request_date),
     )
     return _record_action(connection, order_id, "RETURN_CREATED", tool_name)
+
+
+def authorize_refund(connection: sqlite3.Connection, order_id: str) -> str:
+    """Record a policy-approved refund authorization in the caller's transaction.
+
+    Historical payments and return/order state are read without modification.
+    Authorization records amounts only; it does not transfer money or credit.
+    """
+    tool_name = "authorize_refund"
+    if not isinstance(order_id, str) or not order_id.strip():
+        return _record_action(connection, str(order_id), "INVALID_REQUEST", tool_name)
+    if connection.execute(
+        "SELECT 1 FROM orders WHERE order_id = ?", (order_id,)
+    ).fetchone() is None:
+        return _record_action(connection, order_id, "ORDER_NOT_FOUND", tool_name)
+
+    if connection.execute(
+        "SELECT 1 FROM refund_authorizations WHERE order_id = ?", (order_id,)
+    ).fetchone() is not None:
+        return _record_action(connection, order_id, "REFUND_ALREADY_EXISTS", tool_name)
+
+    return_row = connection.execute(
+        "SELECT return_status FROM order_returns WHERE order_id = ?", (order_id,)
+    ).fetchone()
+    if return_row is None:
+        return _record_action(connection, order_id, "REFUND_DENIED_NO_RETURN", tool_name)
+    if return_row[0] != "approved":
+        return _record_action(
+            connection, order_id, "REFUND_DENIED_RETURN_NOT_APPROVED", tool_name
+        )
+
+    try:
+        breakdown = calculate_refund_breakdown(order_id, connection)
+        # SQLite INTEGER columns store signed 64-bit integers.
+        if any(breakdown[key] > 2**63 - 1 for key in ("cash_cents", "voucher_cents")):
+            raise ValueError("Refund amount exceeds SQLite integer capacity")
+    except ValueError:
+        return _record_action(
+            connection, order_id, "REFUND_MANUAL_REVIEW_REQUIRED", tool_name
+        )
+
+    connection.execute(
+        """
+        INSERT INTO refund_authorizations
+            (order_id, refund_status, cash_cents, voucher_cents)
+        VALUES (?, ?, ?, ?)
+        """,
+        (order_id, "authorized", breakdown["cash_cents"], breakdown["voucher_cents"]),
+    )
+    return _record_action(connection, order_id, "REFUND_AUTHORIZED", tool_name)

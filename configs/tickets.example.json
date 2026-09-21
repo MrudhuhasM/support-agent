@@ -1,0 +1,22 @@
+{
+  "seed": 7,
+  "split_seed": 7,
+  "held_out_fraction": null,
+  "tickets_per_split": {
+    "train": {"cancellation": null, "delivery_issue": null, "return": null, "refund": null},
+    "held_out": {"cancellation": null, "delivery_issue": null, "return": null, "refund": null}
+  },
+  "cancellation_after_days": 0,
+  "delivery_lateness_days": 1,
+  "return_request_days": [15, 30, 31],
+  "refund_return_after_days": 15,
+  "refund_request_after_days": 16,
+  "refund_return_states": ["none", "created", "approved"],
+  "triage_labels": {
+    "cancellation": {"urgency": null, "route": null},
+    "delivery_issue": {"urgency": null, "route": null},
+    "return": {"urgency": null, "route": null},
+    "refund": {"urgency": null, "route": null}
+  },
+  "message_generation": {"mode": "template", "model": "offline-template-v1", "parameters": {}}
+}
